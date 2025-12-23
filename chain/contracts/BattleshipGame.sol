@@ -110,8 +110,8 @@ contract BattleshipGame is ZamaEthereumConfig {
         require(gameState == GameState.InProgress, "Game not in progress");
         require(msg.sender == currentTurn, "Not your turn");
         
-        uint128 maxCells = uint128(boardSize) * uint128(boardSize);
-        require(targetCell < maxCells, "Invalid cell index");
+        uint128 boardMaxCells = uint128(boardSize) * uint128(boardSize);
+        require(targetCell < boardMaxCells, "Invalid cell index");
 
         // Get opponent (optimized: single ternary instead of separate variable)
         address opponent = msg.sender == player1 ? player2 : player1;
@@ -166,7 +166,7 @@ contract BattleshipGame is ZamaEthereumConfig {
         winner = FHE.select(
             allShipsHit,
             FHE.asEaddress(msg.sender),
-            FHE.asEaddress(opponent),
+            FHE.asEaddress(opponent)
         );
 
         FHE.allowThis(winner);
