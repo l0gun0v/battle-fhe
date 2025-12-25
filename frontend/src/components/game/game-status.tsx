@@ -137,6 +137,15 @@ export function GameStatus({
                 </div>
             </div>
 
+            {/* Loading Winner State */}
+            {gameState === GameState.Finished && !winner && (
+                <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center animate-pulse">
+                    <Loader2 className="h-8 w-8 animate-spin text-slate-400 mx-auto mb-3" />
+                    <p className="text-slate-600 font-medium">Calculating Final Results...</p>
+                    <p className="text-slate-400 text-xs mt-1">Decrypting winner information from the blockchain</p>
+                </div>
+            )}
+
             {/* Final Announcement */}
             {gameState === GameState.Finished && winner && (
                 <div className={`rounded-xl p-6 shadow-xl border-2 text-center animate-in fade-in zoom-in duration-500 ${winner.toLowerCase() === userAddress.toLowerCase()

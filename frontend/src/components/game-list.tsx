@@ -144,7 +144,7 @@ export default function GameList() {
                     variant={isMyGame ? "default" : "secondary"}
                     className="w-full group-hover:shadow-lg transition-all"
                 >
-                    {isMyGame ? 'Continue Game' : 'Join Game'}
+                    {game.gameState === GameState.Finished ? 'View Game' : (isMyGame ? 'Continue Game' : 'Join Game')}
                     <ExternalLink className="ml-2 h-4 w-4" />
                 </Button>
             </Link>
