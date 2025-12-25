@@ -25,10 +25,11 @@ export function useGameContract(contractAddress: string) {
             { address: contractAddress as `0x${string}`, abi: GAME_ABI, functionName: 'player1' },
             { address: contractAddress as `0x${string}`, abi: GAME_ABI, functionName: 'player2' },
             { address: contractAddress as `0x${string}`, abi: GAME_ABI, functionName: 'currentTurn' },
+            { address: contractAddress as `0x${string}`, abi: GAME_ABI, functionName: 'winner' },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ] as any,
         query: {
-            refetchInterval: 5000,
+            refetchInterval: 2500,
             enabled: !!contractAddress
         }
     });
@@ -39,6 +40,7 @@ export function useGameContract(contractAddress: string) {
     const player1 = results?.[3]?.result as string;
     const player2 = results?.[4]?.result as string;
     const currentTurn = results?.[5]?.result as string;
+    const winnerHandle = results?.[6]?.result;
 
     const isPlayer1 = userAddress?.toLowerCase() === player1?.toLowerCase();
     const isPlayer2 = userAddress?.toLowerCase() === player2?.toLowerCase();
@@ -58,7 +60,7 @@ export function useGameContract(contractAddress: string) {
         ] as any,
         query: {
             enabled: !!contractAddress && isParticipant,
-            refetchInterval: 5000
+            refetchInterval: 2500
         }
     });
 
@@ -127,6 +129,8 @@ export function useGameContract(contractAddress: string) {
         isPlayer1,
         isPlayer2,
         userAddress,
+        player1,
+        player2,
         opponentAddress: opponentAddress as string | undefined,
         hasUserPlacedShips,
         hasOpponentPlacedShips,
@@ -135,6 +139,7 @@ export function useGameContract(contractAddress: string) {
         myHitsMask,
         myMoveMask,
         userPlayerData,
+        winnerHandle,
         isInitialLoading,
         isFetching,
 

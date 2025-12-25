@@ -36,6 +36,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
     const [oppMisses, setOppMisses] = useState<Set<number>>(new Set());
     const [allOpponentShipsHit, setAllOpponentShipsHit] = useState(false);
     const [allMyShipsHit, setAllMyShipsHit] = useState(false);
+    const [winner, setWinner] = useState<string | null>(null);
 
     const [showMyBoard, setShowMyBoard] = useState(false);
 
@@ -111,6 +112,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
             const myHitsHandle = 'myHits';
             const myMovesHandle = 'myMoves';
             const myPlanHandle = 'myPlan';
+            const winnerHandle = 'winner';
 
             if (game.gameState === GameState.InProgress && masksReady) {
                 handlesToDecrypt.push({ value: game.oppHitsMask, name: oppHitsHandle });
@@ -122,6 +124,11 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
             // Add user ships handle if available and valid
             if (hasPlantedShips) {
                 handlesToDecrypt.push({ value: myPlanHandleValue, name: myPlanHandle });
+            }
+
+            // Add winner handle if available
+            if (game.gameState === GameState.Finished && isValidHandle(game.winnerHandle)) {
+                handlesToDecrypt.push({ value: game.winnerHandle, name: winnerHandle });
             }
 
             // Final safety: if no handles to decrypt after all checks, skip
@@ -141,6 +148,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 const dMyMoves = results[myMovesHandle];
                 const dOppHits = results[oppHitsHandle];
                 const dOppMoves = results[oppMovesHandle];
+                const dWinner = results[winnerHandle];
 
                 // 3. Process Logic
                 const size = game.boardSize;
@@ -179,6 +187,10 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 const oppWon = (game.shipCount ?? 0) > 0 && bitsToSet(BigInt(dMyHits ?? 0n)).size >= (game.shipCount ?? 0);
                 setAllMyShipsHit(oppWon);
 
+                if (dWinner !== undefined) {
+                    setWinner(dWinner as string);
+                }
+
                 setHasInitiallyDecrypted(true);
             } catch (err) {
                 console.error('Board update decryption error:', err);
@@ -201,11 +213,11 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         return () => {
             mounted = false;
         }
-    }, [game.gameState, game.isParticipant, game.userAddress, game.opponentAddress, decryptHandles, contractAddress, game.boardSize, game.shipCount, game.oppHitsMask, game.oppMoveMask, game.myHitsMask, game.myMoveMask, game.userPlayerData, game.hasUserPlacedShips, fhevm]);
+    }, [game.gameState, game.isParticipant, game.userAddress, game.opponentAddress, decryptHandles, contractAddress, game.boardSize, game.shipCount, game.oppHitsMask, game.oppMoveMask, game.myHitsMask, game.myMoveMask, game.userPlayerData, game.hasUserPlacedShips, game.winnerHandle, fhevm]);
 
     // --- DERIVED STATE ---
     const isInitialLoading = game.isInitialLoading || !hasInitiallyDecrypted;
-    const isInteractionsBlocked = isInitialLoading || allOpponentShipsHit || allMyShipsHit;
+    const isInteractionsBlocked = isInitialLoading || game.isPending || game.isConfirming || allOpponentShipsHit || allMyShipsHit;
 
     // --- HANDLERS ---
 
@@ -312,6 +324,9 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 isFetching={game.isFetching || isDecryptingLocal}
                 allOpponentShipsHit={allOpponentShipsHit}
                 allMyShipsHit={allMyShipsHit}
+                winner={winner}
+                player1={game.player1}
+                player2={game.player2}
                 showMyBoard={showMyBoard}
                 setShowMyBoard={setShowMyBoard}
                 onRefresh={() => { }} // Auto-refreshes
