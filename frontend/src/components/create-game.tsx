@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Loader2, Plus, Grid3x3, Ship } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useQueryClient } from '@tanstack/react-query'
 
 const FACTORY_ABI = BattleshipFactoryArtifact.abi
 
@@ -16,6 +17,7 @@ export default function CreateGame() {
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
         hash,
     })
+    const queryClient = useQueryClient()
 
     const [boardSize, setBoardSize] = useState('5')
     const [shipCount, setShipCount] = useState('2')
@@ -23,28 +25,29 @@ export default function CreateGame() {
     useEffect(() => {
         if (isSuccess) {
             toast.success('Game created successfully!')
+            queryClient.invalidateQueries()
         }
-    }, [isSuccess])
+    }, [isSuccess, queryClient])
 
     const handleCreate = async () => {
         const boardSizeNum = Number(boardSize)
         const shipCountNum = Number(shipCount)
-        
+
         if (!boardSize || !shipCount || isNaN(boardSizeNum) || isNaN(shipCountNum)) {
             toast.error('Please enter valid numbers')
             return
         }
-        
+
         if (boardSizeNum < 3 || boardSizeNum > 10) {
             toast.error('Board size must be between 3 and 10')
             return
         }
-        
+
         if (shipCountNum < 2) {
             toast.error('Must have at least 2 ships')
             return
         }
-        
+
         try {
             writeContract({
                 address: FACTORY_ADDRESS as `0x${string}`,
@@ -66,7 +69,7 @@ export default function CreateGame() {
                 </div>
                 <h3 className="text-xl font-bold text-blue-900">Create New Game</h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-semibold text-blue-800">
@@ -78,23 +81,22 @@ export default function CreateGame() {
                         value={boardSize}
                         onChange={(e) => setBoardSize(e.target.value)}
                         className="w-full border-2 border-blue-200 bg-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-blue-900 font-medium"
-                        min={3} 
+                        min={3}
                         max={10}
                         placeholder="Enter board size"
                     />
-                    <p className={`text-xs ${
-                        boardSize && !isNaN(Number(boardSize)) && Number(boardSize) >= 3 && Number(boardSize) <= 10
-                            ? 'text-blue-600' 
+                    <p className={`text-xs ${boardSize && !isNaN(Number(boardSize)) && Number(boardSize) >= 3 && Number(boardSize) <= 10
+                            ? 'text-blue-600'
                             : 'text-red-600'
-                    }`}>
-                        {boardSize && !isNaN(Number(boardSize)) 
+                        }`}>
+                        {boardSize && !isNaN(Number(boardSize))
                             ? (Number(boardSize) >= 3 && Number(boardSize) <= 10
                                 ? `Size: ${boardSize}x${boardSize}`
                                 : 'Enter a number between 3 and 10')
                             : 'Enter a number between 3 and 10'}
                     </p>
                 </div>
-                
+
                 <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-semibold text-blue-800">
                         <Ship className="h-4 w-4" />
@@ -108,12 +110,11 @@ export default function CreateGame() {
                         min={2}
                         placeholder="Enter number of ships"
                     />
-                    <p className={`text-xs ${
-                        shipCount && !isNaN(Number(shipCount)) && Number(shipCount) >= 2
-                            ? 'text-blue-600' 
+                    <p className={`text-xs ${shipCount && !isNaN(Number(shipCount)) && Number(shipCount) >= 2
+                            ? 'text-blue-600'
                             : 'text-red-600'
-                    }`}>
-                        {shipCount && !isNaN(Number(shipCount)) 
+                        }`}>
+                        {shipCount && !isNaN(Number(shipCount))
                             ? (Number(shipCount) >= 2
                                 ? `Place ${shipCount} ships on the board`
                                 : 'Enter a number (minimum 2)')
@@ -121,15 +122,15 @@ export default function CreateGame() {
                     </p>
                 </div>
             </div>
-            
+
             <Button
                 onClick={handleCreate}
                 disabled={
-                    isPending || 
-                    isConfirming || 
-                    !boardSize || 
-                    !shipCount || 
-                    isNaN(Number(boardSize)) || 
+                    isPending ||
+                    isConfirming ||
+                    !boardSize ||
+                    !shipCount ||
+                    isNaN(Number(boardSize)) ||
                     isNaN(Number(shipCount)) ||
                     Number(boardSize) < 3 ||
                     Number(boardSize) > 10 ||

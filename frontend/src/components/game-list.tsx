@@ -21,6 +21,9 @@ export default function GameList() {
         address: FACTORY_ADDRESS as `0x${string}`,
         abi: FACTORY_ABI,
         functionName: 'getGameCount',
+        query: {
+            refetchInterval: 6000
+        }
     })
 
     const [gameAddresses, setGameAddresses] = useState<string[]>([])
@@ -66,7 +69,8 @@ export default function GameList() {
             { address: address as `0x${string}`, abi: GAME_ABI as any, functionName: 'player2' },
         ]),
         query: {
-            enabled: gameAddresses.length > 0
+            enabled: gameAddresses.length > 0,
+            refetchInterval: 6000
         }
     })
 
