@@ -29,19 +29,14 @@ export function useGameContract(contractAddress: string) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ] as any,
         query: {
-            refetchInterval: 2500,
+            refetchInterval: 2500, // Keep constant polling for core state to avoid complex hoisting issues
             enabled: !!contractAddress
         }
     });
 
     const gameState = results?.[0]?.result as GameState;
-    const boardSize = Number(results?.[1]?.result || 5); // Default to 5 instead of 10 to match game
-    const shipCount = Number(results?.[2]?.result || 0);
     const player1 = results?.[3]?.result as string;
     const player2 = results?.[4]?.result as string;
-    const currentTurn = results?.[5]?.result as string;
-    const winnerHandle = results?.[6]?.result;
-
     const isPlayer1 = userAddress?.toLowerCase() === player1?.toLowerCase();
     const isPlayer2 = userAddress?.toLowerCase() === player2?.toLowerCase();
     const isParticipant = isPlayer1 || isPlayer2;
@@ -60,9 +55,14 @@ export function useGameContract(contractAddress: string) {
         ] as any,
         query: {
             enabled: !!contractAddress && isParticipant,
-            refetchInterval: 2500
+            refetchInterval: gameState === GameState.Finished ? undefined : 2500
         }
     });
+
+    const boardSize = Number(results?.[1]?.result || 5);
+    const shipCount = Number(results?.[2]?.result || 0);
+    const currentTurn = results?.[5]?.result as string;
+    const winnerHandle = results?.[6]?.result;
 
     const userPlayerData = playerResults?.[0]?.result;
     const opponentPlayerData = playerResults?.[1]?.result;

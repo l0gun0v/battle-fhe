@@ -94,25 +94,27 @@ export function GameStatus({
                         )}
 
                         {/* Controls */}
-                        {isParticipant && gameState === GameState.InProgress && (
+                        {isParticipant && (gameState === GameState.InProgress || gameState === GameState.Finished) && (
                             <>
                                 <Button
                                     variant={showMyBoard ? "default" : "outline"}
                                     size="sm"
-                                    onMouseEnter={() => setShowMyBoard(true)}
-                                    onMouseLeave={() => setShowMyBoard(false)}
+                                    onClick={() => setShowMyBoard(!showMyBoard)}
                                     disabled={isPending || isConfirming || isInitialLoading}
+                                    title={showMyBoard ? "Viewing My Board" : "Viewing Opponent's Board"}
                                 >
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className={`h-4 w-4 ${showMyBoard ? 'text-white' : 'text-blue-600'}`} />
                                 </Button>
-                                <Button
-                                    onClick={onRefresh}
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={isPending || isConfirming || isInitialLoading || isFetching}
-                                >
-                                    {(isPending || isConfirming || isInitialLoading || isFetching) ? <Loader2 className="animate-spin h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
-                                </Button>
+                                {gameState === GameState.InProgress && (
+                                    <Button
+                                        onClick={onRefresh}
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isPending || isConfirming || isInitialLoading || isFetching}
+                                    >
+                                        {(isPending || isConfirming || isInitialLoading || isFetching) ? <Loader2 className="animate-spin h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+                                    </Button>
+                                )}
                             </>
                         )}
                     </div>
@@ -148,23 +150,35 @@ export function GameStatus({
 
             {/* Final Announcement */}
             {gameState === GameState.Finished && winner && (
-                <div className={`rounded-xl p-6 shadow-xl border-2 text-center animate-in fade-in zoom-in duration-500 ${winner.toLowerCase() === userAddress.toLowerCase()
-                    ? 'bg-gradient-to-br from-yellow-400 via-orange-400 to-amber-500 border-yellow-200'
-                    : 'bg-gradient-to-br from-slate-600 to-slate-800 border-slate-500'
+                <div className={`rounded-xl p-4 shadow-lg border-2 text-center animate-in fade-in slide-in-from-top-4 duration-500 ${winner.toLowerCase() === userAddress.toLowerCase()
+                    ? 'bg-gradient-to-r from-yellow-100 via-orange-100 to-amber-100 border-yellow-300'
+                    : 'bg-gradient-to-r from-slate-100 to-slate-200 border-slate-300'
                     }`}>
-                    {winner.toLowerCase() === userAddress.toLowerCase() && <div className="text-5xl mb-3 animate-bounce">🏆</div>}
-                    <h2 className="text-2xl font-black text-white drop-shadow-md mb-2">
-                        {winner.toLowerCase() === userAddress.toLowerCase() ? 'DIVINE VICTORY' : 'GAME OVER'}
-                    </h2>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 inline-block">
-                        <p className="text-white font-bold text-sm uppercase tracking-[0.2em] mb-1">The Winner Is</p>
-                        <p className="text-white text-xl font-mono break-all">{winner}</p>
+                    <div className="flex items-center justify-center gap-3">
+                        {winner.toLowerCase() === userAddress.toLowerCase() ? (
+                            <span className="text-2xl animate-bounce">🏆</span>
+                        ) : (
+                            <span className="text-2xl">⚓</span>
+                        )}
+                        <div className="text-left">
+                            <h2 className={`text-lg font-black uppercase tracking-tight ${winner.toLowerCase() === userAddress.toLowerCase() ? 'text-amber-800' : 'text-slate-800'}`}>
+                                {winner.toLowerCase() === userAddress.toLowerCase() ? 'DIVINE VICTORY' : 'GAME OVER'}
+                            </h2>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold opacity-60 uppercase tracking-wider italic">Winner:</span>
+                                <span className={`text-sm font-mono font-bold ${winner.toLowerCase() === userAddress.toLowerCase() ? 'text-amber-900' : 'text-slate-900'}`}>
+                                    {winner.slice(0, 8)}...{winner.slice(-6)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    {winner.toLowerCase() === userAddress.toLowerCase() ? (
-                        <p className="mt-4 text-white text-3xl font-black italic drop-shadow-lg">YOU WON! 🎉</p>
-                    ) : (
-                        <p className="mt-4 text-slate-300 text-2xl font-bold italic">Better luck next time! ⚓</p>
-                    )}
+                    <div className="mt-2 pt-2 border-t border-black/5">
+                        {winner.toLowerCase() === userAddress.toLowerCase() ? (
+                            <p className="text-amber-700 font-extrabold text-sm italic">You conquered the seas! 🎉</p>
+                        ) : (
+                            <p className="text-slate-600 font-bold text-sm italic">Your fleet has been sunk. Better luck next time.</p>
+                        )}
+                    </div>
                 </div>
             )}
 

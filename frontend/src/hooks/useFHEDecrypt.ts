@@ -132,7 +132,7 @@ export function useFHEDecrypt(contractAddress: string) {
         handles: { value: bigint | string | unknown, name: string }[],
         contractAddress: string
     ) => {
-        if (!fhevm || !connectorClient || !userAddress) return null;
+        if (!fhevm || !connectorClient || !userAddress) return {};
 
         const signer = clientToSigner(connectorClient);
         const fhevmInstance = fhevm as unknown as FhevmInstance;

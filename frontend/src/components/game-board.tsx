@@ -61,6 +61,22 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         }
     }, [game.isConfirmed, game.writeHash, selectedCells]);
 
+    // --- EFFECT: RESET STATE ON NAVIGATION ---
+    useEffect(() => {
+        setMyShips(new Set());
+        setMyHits(new Set());
+        setMyMisses(new Set());
+        setOppHits(new Set());
+        setOppMisses(new Set());
+        setAllOpponentShipsHit(false);
+        setAllMyShipsHit(false);
+        setWinner(null);
+        setHasInitiallyDecrypted(false);
+        setIsDecryptingLocal(false);
+        isDecryptingRef.current = false;
+        setSelectedCells([]);
+    }, [contractAddress]);
+
     // --- EFFECT: DECRYPTION REACTIVITY ---
     // Decrypts state whenever masks change from the game hook
     useEffect(() => {
@@ -81,7 +97,11 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 return;
             }
 
-            if (!game.isParticipant || !game.userAddress) return;
+            if (!game.isParticipant || !game.userAddress) {
+                // If not a participant, we can't decrypt but we should still unblock the UI
+                setHasInitiallyDecrypted(true);
+                return;
+            }
             if (isDecryptingRef.current || !fhevm) return;
 
             // 2. Game Phase Analysis
@@ -114,7 +134,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
             const myPlanHandle = 'myPlan';
             const winnerHandle = 'winner';
 
-            if (game.gameState === GameState.InProgress && masksReady) {
+            if ((game.gameState === GameState.InProgress || game.gameState === GameState.Finished) && masksReady) {
                 handlesToDecrypt.push({ value: game.oppHitsMask, name: oppHitsHandle });
                 handlesToDecrypt.push({ value: game.oppMoveMask, name: oppMovesHandle });
                 handlesToDecrypt.push({ value: game.myHitsMask, name: myHitsHandle });
@@ -141,7 +161,10 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
 
             try {
                 const results = await decryptHandles(handlesToDecrypt, contractAddress);
-                if (!mounted || !results) return;
+                if (!mounted || !results) {
+                    setHasInitiallyDecrypted(true);
+                    return;
+                }
 
                 const dMyShips = results[myPlanHandle];
                 const dMyHits = results[myHitsHandle];
@@ -194,14 +217,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 setHasInitiallyDecrypted(true);
             } catch (err) {
                 console.error('Board update decryption error:', err);
-                const msg = String(err);
-                if (msg.includes('authorized')) {
-                    // If it's just an authorization error, we might be in an inconsistent state 
-                    // where one handle is allowed but another isn't. 
-                    // We set setHasInitiallyDecrypted to true to unblock UI, 
-                    // but some data might stay hidden.
-                    setHasInitiallyDecrypted(true);
-                }
+                setHasInitiallyDecrypted(true);
             } finally {
                 isDecryptingRef.current = false;
                 setIsDecryptingLocal(false);
@@ -362,7 +378,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                             isFetching={game.isFetching || isDecryptingLocal}
                         />
                     </>
-                ) : game.gameState === GameState.InProgress ? (
+                ) : (game.gameState === GameState.InProgress || game.gameState === GameState.Finished) ? (
                     <BoardGrid
                         gameState={game.gameState}
                         size={game.boardSize}
@@ -377,7 +393,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                         isMyTurn={game.currentTurn === game.userAddress}
                         isInitialLoading={isInitialLoading}
                         isInteractionsBlocked={isInteractionsBlocked}
-                        title={showMyBoard ? "My Board" : "Opponent's Board"}
+                        title={showMyBoard ? (game.gameState === GameState.Finished ? "My Final Board" : "My Board") : (game.gameState === GameState.Finished ? "Opponent's Final Board" : "Opponent's Board")}
                     />
                 ) : null
             )}
