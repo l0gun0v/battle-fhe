@@ -5,8 +5,8 @@ interface BoardGridProps {
     size: number;
     hits: Set<number>;
     misses: Set<number>;
-    ships: Set<number>; // Only used for "My Board" or placement
-    selectedCells: number[]; // For placement
+    ships: Set<number>; 
+    selectedCells: number[]; 
     onCellClick: (index: number) => void;
     isMyBoard: boolean;
     isMyTurn: boolean;
@@ -52,7 +52,6 @@ export function BoardGrid({
                             );
 
                         const getCellContent = (index: number) => {
-                            // Logic for My Board (or placement phase)
                             if (isMyBoard) {
                                 if (hits.has(index)) {
                                     return '💥';
@@ -62,7 +61,6 @@ export function BoardGrid({
                                     return '🚢';
                                 }
                             } else {
-                                // Logic for Opponent Board
                                 if (hits.has(index)) {
                                     return '💥';
                                 } else if (misses.has(index)) {

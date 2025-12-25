@@ -58,7 +58,6 @@ export default function GameList() {
         fetchAddresses()
     }, [gameCount])
 
-    // Fetch details for all discovered games
     const { data: detailsResults, isLoading: isLoadingDetails } = useReadContracts({
         contracts: gameAddresses.flatMap(address => [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

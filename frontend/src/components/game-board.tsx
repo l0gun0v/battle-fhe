@@ -13,26 +13,21 @@ import { ShipPlacement } from './game/ship-placement';
 import { Loader2 } from 'lucide-react';
 
 export default function GameBoard({ contractAddress }: { contractAddress: string }) {
-    // --- HOOKS ---
     const { data: fhevm } = useFhevm();
     const game = useGameContract(contractAddress);
     const { decryptHandles } = useFHEDecrypt(contractAddress);
 
-    // --- DERIVED STATE (REMOVED DUPLICATE) ---
 
-    // --- LOCAL STATE ---
     const [selectedCells, setSelectedCells] = useState<number[]>([]);
     const isDecryptingRef = useRef(false);
     const [isDecryptingLocal, setIsDecryptingLocal] = useState(false);
     const [hasInitiallyDecrypted, setHasInitiallyDecrypted] = useState(false);
 
-    // My Board State (Decrypted)
     const [myShips, setMyShips] = useState<Set<number>>(new Set());
-    const [myHits, setMyHits] = useState<Set<number>>(new Set());   // Opponent hits on me
+    const [myHits, setMyHits] = useState<Set<number>>(new Set());
     const [myMisses, setMyMisses] = useState<Set<number>>(new Set());
 
-    // Opponent Board State (Decrypted)
-    const [oppHits, setOppHits] = useState<Set<number>>(new Set()); // My hits on opponent
+    const [oppHits, setOppHits] = useState<Set<number>>(new Set()); 
     const [oppMisses, setOppMisses] = useState<Set<number>>(new Set());
     const [allOpponentShipsHit, setAllOpponentShipsHit] = useState(false);
     const [allMyShipsHit, setAllMyShipsHit] = useState(false);
@@ -40,10 +35,8 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
 
     const [showMyBoard, setShowMyBoard] = useState(false);
 
-    // Track transaction types for toast messages
     const lastAction = useRef<'join' | 'place' | 'move' | 'finish' | null>(null);
 
-    // --- EFFECT: TRANSACTION FEEDBACK ---
     useEffect(() => {
         if (game.isConfirmed && game.writeHash) {
             if (lastAction.current === 'place') {
@@ -61,7 +54,6 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         }
     }, [game.isConfirmed, game.writeHash, selectedCells]);
 
-    // --- EFFECT: RESET STATE ON NAVIGATION ---
     useEffect(() => {
         setMyShips(new Set());
         setMyHits(new Set());
@@ -77,49 +69,41 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         setSelectedCells([]);
     }, [contractAddress]);
 
-    // --- EFFECT: DECRYPTION REACTIVITY ---
-    // Decrypts state whenever masks change from the game hook
+  
     useEffect(() => {
         let mounted = true;
 
         const updateBoards = async () => {
             if (game.gameState === undefined) return;
 
-            // Helpful for debugging handle states
             const isValidHandle = (h: unknown) => {
                 const s = String(h || '');
                 return s !== '' && s !== '0n' && s !== '0' && s !== '0x0' && !s.match(/^0x0+$/);
             };
 
-            // 1. Initial State: Just joined, waiting for opponent
             if (game.gameState === GameState.WaitingForOpponent) {
                 setHasInitiallyDecrypted(true);
                 return;
             }
 
             if (!game.isParticipant || !game.userAddress) {
-                // If not a participant, we can't decrypt but we should still unblock the UI
                 setHasInitiallyDecrypted(true);
                 return;
             }
             if (isDecryptingRef.current || !fhevm) return;
 
-            // 2. Game Phase Analysis
             const myPlanHandleValue = game.userPlayerData && Array.isArray(game.userPlayerData) ? game.userPlayerData[0] : null;
             const hasPlantedShips = !!game.hasUserPlacedShips && isValidHandle(myPlanHandleValue);
 
-            // If we are in placement phase but I haven't placed yet, nothing to decrypt
             if (game.gameState === GameState.WaitingForPlacements && !hasPlantedShips) {
                 setHasInitiallyDecrypted(true);
                 return;
             }
 
-            // In Progress: absolute need for masks to be valid before signature prompt
             const masksReady = isValidHandle(game.oppHitsMask) && isValidHandle(game.oppMoveMask) &&
                 isValidHandle(game.myHitsMask) && isValidHandle(game.myMoveMask);
 
             if (game.gameState === GameState.InProgress && !masksReady) {
-                // If we are waiting for masks, we might still want to decrypt my ships if they exist
                 if (!hasPlantedShips) return;
             }
 
@@ -141,17 +125,14 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 handlesToDecrypt.push({ value: game.myMoveMask, name: myMovesHandle });
             }
 
-            // Add user ships handle if available and valid
             if (hasPlantedShips) {
                 handlesToDecrypt.push({ value: myPlanHandleValue, name: myPlanHandle });
             }
 
-            // Add winner handle if available
             if (game.gameState === GameState.Finished && isValidHandle(game.winnerHandle)) {
                 handlesToDecrypt.push({ value: game.winnerHandle, name: winnerHandle });
             }
 
-            // Final safety: if no handles to decrypt after all checks, skip
             if (handlesToDecrypt.length === 0) {
                 setHasInitiallyDecrypted(true);
                 isDecryptingRef.current = false;
@@ -173,7 +154,6 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 const dOppMoves = results[oppMovesHandle];
                 const dWinner = results[winnerHandle];
 
-                // 3. Process Logic
                 const size = game.boardSize;
                 const totalCells = size * size;
 
@@ -189,24 +169,20 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                     setMyShips(bitsToSet(BigInt(dMyShips)));
                 }
 
-                // Opponent Board Analysis (Where I attacked)
                 const dOppMisses = BigInt(dOppMoves ?? 0n) & (~BigInt(dOppHits ?? 0n));
                 const oHits = bitsToSet(BigInt(dOppHits ?? 0n));
 
                 setOppHits(oHits);
                 setOppMisses(bitsToSet(BigInt(dOppMisses)));
 
-                // Check Win Condition
                 const iWon = (game.shipCount ?? 0) > 0 && oHits.size >= (game.shipCount ?? 0);
                 setAllOpponentShipsHit(iWon);
 
-                // My Board Analysis (Where Opponent attacked)
                 const dMyMisses = BigInt(dMyMoves ?? 0n) & (~BigInt(dMyHits ?? 0n));
 
                 setMyHits(bitsToSet(BigInt(dMyHits ?? 0n)));
                 setMyMisses(bitsToSet(BigInt(dMyMisses)));
 
-                // Check if I lost
                 const oppWon = (game.shipCount ?? 0) > 0 && bitsToSet(BigInt(dMyHits ?? 0n)).size >= (game.shipCount ?? 0);
                 setAllMyShipsHit(oppWon);
 
@@ -231,11 +207,9 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         }
     }, [game.gameState, game.isParticipant, game.userAddress, game.opponentAddress, decryptHandles, contractAddress, game.boardSize, game.shipCount, game.oppHitsMask, game.oppMoveMask, game.myHitsMask, game.myMoveMask, game.userPlayerData, game.hasUserPlacedShips, game.winnerHandle, fhevm]);
 
-    // --- DERIVED STATE ---
     const isInitialLoading = game.isInitialLoading || !hasInitiallyDecrypted;
     const isInteractionsBlocked = isInitialLoading || game.isPending || game.isConfirming || allOpponentShipsHit || allMyShipsHit;
 
-    // --- HANDLERS ---
 
     const handleJoin = async () => {
         lastAction.current = 'join';
@@ -247,7 +221,6 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         if (isInteractionsBlocked) return;
 
         if (game.gameState === GameState.WaitingForPlacements) {
-            // Toggle selection
             if (selectedCells.includes(index)) {
                 setSelectedCells(prev => prev.filter(i => i !== index));
             } else {
@@ -262,14 +235,12 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 toast.error("Switch to Opponent's Board to attack");
                 return;
             }
-            // Attack
             if (oppHits.has(index) || oppMisses.has(index)) {
                 toast.error("Already attacked this cell");
                 return;
             }
             lastAction.current = 'move';
             game.makeMove(index);
-            // Trigger refetch after move to speed up state update
             setTimeout(() => game.refetch(), 1000);
         }
     };
@@ -289,11 +260,9 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
             input.add128(placement);
             const encrypted = await input.encrypt();
 
-            // Format Handle & Proof
             const handle = encrypted.handles[0];
             const proof = encrypted.inputProof;
 
-            // Helper to format bytes to hex string
             const toHex = (data: unknown): string => {
                 if (data instanceof Uint8Array) return `0x${Array.from(data).map(b => b.toString(16).padStart(2, '0')).join('')}`;
                 if (typeof data === 'string' && !data.startsWith('0x')) return `0x${data}`;
@@ -303,7 +272,6 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
             toast.dismiss('encrypt');
             lastAction.current = 'place';
             game.placeShips(toHex(handle), toHex(proof));
-            // Refetch after a delay to ensure contract state is updated
             setTimeout(() => game.refetch(), 2000);
 
         } catch (e) {
@@ -317,7 +285,6 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
         game.finishGame();
     }
 
-    // --- RENDER ---
 
     if (game.gameState === undefined) {
         return (
@@ -345,7 +312,7 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                 player2={game.player2}
                 showMyBoard={showMyBoard}
                 setShowMyBoard={setShowMyBoard}
-                onRefresh={() => { }} // Auto-refreshes
+                onRefresh={() => { }} 
                 onJoin={handleJoin}
             />
 
@@ -382,8 +349,6 @@ export default function GameBoard({ contractAddress }: { contractAddress: string
                     <BoardGrid
                         gameState={game.gameState}
                         size={game.boardSize}
-                        // If showing my board: show Hits (opp hits on me) and Ships
-                        // If showing opponent: show Hits (my hits on opp) and Misses (myl misses on opp)
                         hits={showMyBoard ? myHits : oppHits}
                         misses={showMyBoard ? myMisses : oppMisses}
                         ships={showMyBoard ? myShips : new Set()}

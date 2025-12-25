@@ -104,10 +104,9 @@ contract BattleshipGame is ZamaEthereumConfig {
 
         emit ShipsPlaced(msg.sender);
 
-        // Check if both players have placed ships
         if (players[player1].hasPlacedShips && players[player2].hasPlacedShips) {
             gameState = GameState.InProgress;
-            currentTurn = player1; // Player 1 goes first
+            currentTurn = player1;
         }
     }
 
@@ -123,7 +122,6 @@ contract BattleshipGame is ZamaEthereumConfig {
         uint128 boardMaxCells = uint128(boardSize) * uint128(boardSize);
         require(targetCell < boardMaxCells, "Invalid cell index");
 
-        // Get opponent (optimized: single ternary instead of separate variable)
         address opponent = msg.sender == player1 ? player2 : player1;
         Player storage opponentPlayer = players[opponent];
 
@@ -131,7 +129,6 @@ contract BattleshipGame is ZamaEthereumConfig {
         euint128 encryptedBitPosition = FHE.asEuint128(bitPosition);
         euint128 bitResult = FHE.and(opponentPlayer.shipPlacement, encryptedBitPosition);
         
-        // Check if the result is non-zero (meaning bit is set = hit)
         isHit = FHE.ne(bitResult, FHE.asEuint128(0));
 
         opponentPlayer.moveMask = FHE.or(opponentPlayer.moveMask, encryptedBitPosition);
@@ -158,7 +155,6 @@ contract BattleshipGame is ZamaEthereumConfig {
         
         emit MoveMade(msg.sender, targetCell);
 
-        // Switch turns
         currentTurn = opponent;
     }
 
@@ -169,17 +165,12 @@ contract BattleshipGame is ZamaEthereumConfig {
         require(gameState == GameState.InProgress, "Game not in progress");
         require(msg.sender == player1 || msg.sender == player2, "Invalid winner address");
 
-        // Get the opponent (the player who lost)
         address opponent = msg.sender == player1 ? player2 : player1;
         Player storage opponentPlayer = players[opponent];
 
-        // Verify that all opponent ships have been hit
-        // Check: (hitsMask & shipPlacement) == shipPlacement
-        // This means all ship positions are in the hits mask (all ships were hit)
         euint128 intersection = FHE.and(opponentPlayer.hitsMask, opponentPlayer.shipPlacement);
         ebool allShipsHit = FHE.eq(intersection, opponentPlayer.shipPlacement);
 
-        // Convert the boolean result to euint128 (1 if true, 0 if false)
         winner = FHE.select(
             allShipsHit,
             FHE.asEaddress(msg.sender),

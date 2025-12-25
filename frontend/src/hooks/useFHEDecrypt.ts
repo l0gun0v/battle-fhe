@@ -5,7 +5,7 @@ import { useAccount, useConnectorClient } from 'wagmi';
 import { clientToSigner } from '@/lib/wagmi-etheres-adapter';
 import { useFhevm } from './use-fhevm';
 
-const SIGNATURE_DURATION = '1'; // 1 day for better UX, or keep '100' if you want long retention
+const SIGNATURE_DURATION = '1'; 
 
 interface CachePayload {
     signature: string;
@@ -37,10 +37,9 @@ export function useFHEDecrypt(contractAddress: string) {
     const { data: connectorClient } = useConnectorClient();
     const { data: fhevm } = useFhevm();
 
-    // Helper to get or create signature with robust caching
     const getSignature = useCallback(async (
         fhevmInstance: FhevmInstance,
-        signer: unknown, // simpler than typing Signer for now, or just suppress logic inside if needed
+        signer: unknown, 
         contractAddresses: string[],
         forceRefresh: boolean = false
     ) => {
@@ -49,18 +48,15 @@ export function useFHEDecrypt(contractAddress: string) {
         const storageKey = `fhevm_sig_${contractAddress}_${userAddress.toLowerCase()}_${chainId}`;
         const now = Math.floor(Date.now() / 1000);
 
-        // Try reading from cache
         if (!forceRefresh) {
             try {
                 const cached = localStorage.getItem(storageKey);
                 if (cached) {
                     const parsed: CachePayload = JSON.parse(cached);
 
-                    // Validate cache integrity
                     if (
                         parsed.cachedUserAddress.toLowerCase() === userAddress.toLowerCase() &&
                         parsed.chainId === chainId &&
-                        // Check expiry
                         (now - parseInt(parsed.startTimeStamp) < parseInt(parsed.durationDays) * 86400)
                     ) {
                         return {
@@ -77,7 +73,6 @@ export function useFHEDecrypt(contractAddress: string) {
             }
         }
 
-        // Create new signature
         const startTimeStamp = now.toString();
         const durationDays = SIGNATURE_DURATION;
 
@@ -99,7 +94,6 @@ export function useFHEDecrypt(contractAddress: string) {
             eip712.message
         );
 
-        // Cache everything
         const cachePayload: CachePayload & { privateKey: string, publicKey: string } = {
             signature,
             startTimeStamp,
@@ -116,15 +110,10 @@ export function useFHEDecrypt(contractAddress: string) {
             signature,
             startTimeStamp,
             durationDays,
-            keypair // Return the keypair associated with this signature
+            keypair 
         };
     }, [userAddress, chainId, contractAddress]);
-    // Wait, the linter COMPLAINED about missing dependency. 
-    // Ah, I am using `contractAddress` (singular) in the `storageKey` construction which comes from the HOOK scope.
-    // The explicit argument is `contractAddresses` (plural).
-    // So `contractAddress` (singular) IS a dependency!
 
-    // Retry with correct content:
 
 
 
@@ -138,11 +127,9 @@ export function useFHEDecrypt(contractAddress: string) {
         const fhevmInstance = fhevm as unknown as FhevmInstance;
         const contractAddresses = [contractAddress];
 
-        // Filter out invalid or zero handles to avoid SDK errors or useless requests
         const validHandles = handles.filter(h => h.value !== undefined && h.value !== null && h.value !== 0n && h.value !== '0x0' && h.value !== '');
         if (validHandles.length === 0) return {};
 
-        // Normalization helper
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const norm = (v: any): string => {
             let hex = '';
@@ -150,7 +137,6 @@ export function useFHEDecrypt(contractAddress: string) {
             else if (typeof v === 'string') hex = v.startsWith('0x') ? v : `0x${v}`;
             else hex = String(v);
 
-            // Additional check: if it's a 32-byte zero handle, it's uninitialized
             if (hex === '0x' + '0'.repeat(64)) return '';
             return hex;
         };
@@ -179,20 +165,17 @@ export function useFHEDecrypt(contractAddress: string) {
             const namedResult: Record<string, any> = {};
 
             if (res && typeof res === 'object' && !Array.isArray(res)) {
-                // Handle as object (keyed by handle) - observed in ocp-fhe
                 validHandles.forEach(h => {
                     const key = norm(h.value);
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     namedResult[h.name] = (res as Record<string, any>)[key];
                 });
             } else if (Array.isArray(res)) {
-                // Handle as array (by index)
                 validHandles.forEach((h, i) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     namedResult[h.name] = (res as any[])[i];
                 });
             } else {
-                // Single value (if requested only one)
                 if (validHandles.length === 1) {
                     namedResult[validHandles[0].name] = res;
                 }

@@ -13,7 +13,6 @@ This repository is organized as a monorepo containing both the smart contracts a
 
 - **On-chain Privacy**: Ship locations are stored as encrypted FHE types.
 - **Fair Play**: Move results (hits/misses) are calculated using FHE logic, preventing any player (or the node operator) from seeing the hidden board state.
-- **Seamless Decryption**: Automated EIP-712 signature requests for secure, authorized decryption of game state.
 
 ## 🚀 Possible Optimizations: Data Fetching & Sync
 
@@ -28,9 +27,4 @@ Instead of fetching raw state from the RPC on every poll, a specialized backend 
 ### 2. Transaction Re-checking
 Implementing a robust transaction monitoring service would allow the frontend to stop polling as soon as a transaction is confirmed, rather than waiting for the next periodic refresh cycle.
 
-### 3. Batched FHE Decryption
-For games with larger boards or many players, batching multiple decryption handles into a single relayer request (where supported) would reduce Metamask signature fatigue and RPC overhead.
-
 ---
-
-Built with ❤️ by the Battleship FHE Team.

@@ -32,7 +32,6 @@ export function useFhevm() {
                 (window as unknown as { global: unknown }).global = globalThis;
             }
 
-            // Dynamically import SDK after polyfill is set
             const { createInstance, initSDK, SepoliaConfig } = await import('@zama-fhe/relayer-sdk/web');
 
             await initSDK();

@@ -29,7 +29,7 @@ export function useGameContract(contractAddress: string) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ] as any,
         query: {
-            refetchInterval: 2500, // Keep constant polling for core state to avoid complex hoisting issues
+            refetchInterval: 2500,
             enabled: !!contractAddress
         }
     });
@@ -42,7 +42,6 @@ export function useGameContract(contractAddress: string) {
     const isParticipant = isPlayer1 || isPlayer2;
     const opponentAddress = isPlayer1 ? player2 : (isPlayer2 ? player1 : undefined);
 
-    // Separate hook for player specific data
     const { data: playerResults, refetch: playerResultsRefetch, isLoading: isLoadingPlayers, isFetching: isFetchingPlayers } = useReadContracts({
         contracts: [
             { address: contractAddress as `0x${string}`, abi: GAME_ABI, functionName: 'players', args: userAddress ? [userAddress] : undefined },
@@ -77,7 +76,6 @@ export function useGameContract(contractAddress: string) {
     const isInitialLoading = isLoadingResults || isLoadingPlayers;
     const isFetching = isFetchingResults || isFetchingPlayers;
 
-    // --- ACTIONS ---
 
     const joinGame = () => {
         writeContract({
@@ -120,7 +118,6 @@ export function useGameContract(contractAddress: string) {
     };
 
     return {
-        // State
         gameState: gameState as GameState,
         boardSize: Number(boardSize || 5),
         shipCount: Number(shipCount || 0),
@@ -143,13 +140,11 @@ export function useGameContract(contractAddress: string) {
         isInitialLoading,
         isFetching,
 
-        // Transaction State
         isPending,
         isConfirming,
         isConfirmed,
         writeHash,
 
-        // Actions
         joinGame,
         placeShips,
         makeMove,

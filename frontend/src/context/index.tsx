@@ -8,14 +8,13 @@ import { sepolia } from '@reown/appkit/networks'
 import React, { type ReactNode } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 
-// Set up queryClient
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             retry: 0,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
-            staleTime: 1000 * 60 * 5, // 5 minutes
+            staleTime: 1000 * 60 * 5,
         }
     }
 })
@@ -24,7 +23,6 @@ if (!projectId) {
     throw new Error('Project ID is not defined')
 }
 
-// Create the modal
 createAppKit({
     adapters: [wagmiAdapter],
     projectId,
@@ -33,7 +31,7 @@ createAppKit({
     metadata: {
         name: 'Battleship FHE',
         description: 'Battleship game with FHE',
-        url: 'https://battleship-fhe.vercel.app', // placeholder
+        url: 'https://battleship-fhe.vercel.app', 
         icons: ['https://avatars.githubusercontent.com/u/179229932']
     },
     features: {
