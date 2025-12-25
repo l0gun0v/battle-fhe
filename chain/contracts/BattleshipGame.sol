@@ -18,7 +18,8 @@ contract BattleshipGame is ZamaEthereumConfig {
     /// @notice Player information
     struct Player {
         euint128 shipPlacement; // Encrypted bitmask of ship positions
-        euint128 hitMask; // Encrypted bitmask of cells that have been hit
+        euint128 moveMask; // Encrypted bitmask of all cells that have been attacked (hits + misses)
+        euint128 hitsMask; // Encrypted bitmask of cells that were actually hit (only hits)
         bool hasPlacedShips;
     }
 
@@ -87,10 +88,19 @@ contract BattleshipGame is ZamaEthereumConfig {
         euint128 placement = FHE.fromExternal(encryptedPlacement, inputProof);
         players[msg.sender].shipPlacement = placement;
         players[msg.sender].hasPlacedShips = true;
-        players[msg.sender].hitMask = FHE.asEuint128(0);
+        players[msg.sender].moveMask = FHE.asEuint128(0);
+        players[msg.sender].hitsMask = FHE.asEuint128(0);
 
         FHE.allowThis(placement);
         FHE.allow(placement, msg.sender);
+
+        FHE.allowThis(players[msg.sender].moveMask);
+        FHE.allow(players[msg.sender].moveMask, player1);
+        FHE.allow(players[msg.sender].moveMask, player2);
+
+        FHE.allowThis(players[msg.sender].hitsMask);
+        FHE.allow(players[msg.sender].hitsMask, player1);
+        FHE.allow(players[msg.sender].hitsMask, player2);
 
         emit ShipsPlaced(msg.sender);
 
@@ -124,19 +134,27 @@ contract BattleshipGame is ZamaEthereumConfig {
         // Check if the result is non-zero (meaning bit is set = hit)
         isHit = FHE.ne(bitResult, FHE.asEuint128(0));
 
-        opponentPlayer.hitMask = FHE.or(opponentPlayer.hitMask, encryptedBitPosition);
+        opponentPlayer.moveMask = FHE.or(opponentPlayer.moveMask, encryptedBitPosition);
+        
+        opponentPlayer.hitsMask = FHE.select(
+            isHit,
+            FHE.or(opponentPlayer.hitsMask, encryptedBitPosition),
+            opponentPlayer.hitsMask
+        );
 
-        // Grant decryption permissions:
-        // 1. The player making the move can decrypt the hit result
+
         FHE.allowThis(isHit);
         FHE.allow(isHit, msg.sender);
         FHE.allow(isHit, opponent);
         
-        // 2. The player making the move can decrypt the opponent's hit mask
-        //    (shows which cells they've targeted on opponent's board)
-        FHE.allowThis(opponentPlayer.hitMask);
-        FHE.allow(opponentPlayer.hitMask, msg.sender);
-        FHE.allow(opponentPlayer.hitMask, opponent);
+
+        FHE.allowThis(opponentPlayer.moveMask);
+        FHE.allow(opponentPlayer.moveMask, msg.sender);
+        FHE.allow(opponentPlayer.moveMask, opponent);
+        
+        FHE.allowThis(opponentPlayer.hitsMask);
+        FHE.allow(opponentPlayer.hitsMask, msg.sender);
+        FHE.allow(opponentPlayer.hitsMask, opponent);
         
         emit MoveMade(msg.sender, targetCell);
 
@@ -146,7 +164,7 @@ contract BattleshipGame is ZamaEthereumConfig {
 
     /// @notice Manually finish the game (verifies winner actually won)
     /// @dev The caller must provide proof that all opponent ships have been hit.
-    ///      The contract verifies this by checking: (hitMask & shipPlacement) == shipPlacement
+    ///      The contract verifies this by checking: (hitsMask & shipPlacement) == shipPlacement
     function finishGame() external {
         require(gameState == GameState.InProgress, "Game not in progress");
         require(msg.sender == player1 || msg.sender == player2, "Invalid winner address");
@@ -156,10 +174,9 @@ contract BattleshipGame is ZamaEthereumConfig {
         Player storage opponentPlayer = players[opponent];
 
         // Verify that all opponent ships have been hit
-        // Check: (hitMask & shipPlacement) == shipPlacement
-        // This means all ship positions are in the hit mask (all ships were targeted)
-        // Note: This verifies all ships were targeted, which is necessary for winning
-        euint128 intersection = FHE.and(opponentPlayer.hitMask, opponentPlayer.shipPlacement);
+        // Check: (hitsMask & shipPlacement) == shipPlacement
+        // This means all ship positions are in the hits mask (all ships were hit)
+        euint128 intersection = FHE.and(opponentPlayer.hitsMask, opponentPlayer.shipPlacement);
         ebool allShipsHit = FHE.eq(intersection, opponentPlayer.shipPlacement);
 
         // Convert the boolean result to euint128 (1 if true, 0 if false)
@@ -182,18 +199,23 @@ contract BattleshipGame is ZamaEthereumConfig {
     /// @param player The address of the player
     /// @return The encrypted ship placement bitmask
     function getShipPlacement(address player) external view returns (euint128) {
-        require(player == player1 || player == player2, "Not a player");
         return players[player].shipPlacement;
     }
 
-    /// @notice Gets the encrypted hit mask for a player
+    /// @notice Gets the encrypted move mask for a player
     /// @param player The address of the player
-    /// @return The encrypted hit mask bitmask
-    /// @dev The hit mask shows which cells have been targeted on this player's board.
-    ///      Only the opponent (who made the moves) can decrypt this to see their attack history.
-    function getHitMask(address player) external view returns (euint128) {
-        require(player == player1 || player == player2, "Not a player");
-        return players[player].hitMask;
+    /// @return The encrypted move mask bitmask
+    /// @dev The move mask shows which cells have been targeted on this player's board (hits + misses).
+    function getMoveMask(address player) external view returns (euint128) {
+        return players[player].moveMask;
+    }
+
+    /// @notice Gets the encrypted hits mask for a player
+    /// @param player The address of the player
+    /// @return The encrypted hits mask bitmask
+    /// @dev The hits mask shows which cells were actually hit (only hits, not misses).
+    function getHitsMask(address player) external view returns (euint128) {
+        return players[player].hitsMask;
     }
 
 }

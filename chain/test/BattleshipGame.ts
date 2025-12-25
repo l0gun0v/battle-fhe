@@ -177,29 +177,44 @@ describe("BattleshipGame - 5x5 game with player 1 winning after 21 turns", funct
     // Alice made moves: 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21 = 11 moves
     // Bob made moves: 2, 4, 6, 8, 10, 12, 14, 16, 18, 20 = 10 moves
 
-    // Check that Alice has hit all of Bob's ships
-    const bobHitMask = await game.getHitMask(signers.bob.address);
-    const bobHitMaskDecrypted = await fhevm.userDecryptEuint(
+    // Check that Alice has attacked all cells (move mask - all attacked cells)
+    const bobMoveMask = await game.getMoveMask(signers.bob.address);
+    const bobMoveMaskDecrypted = await fhevm.userDecryptEuint(
       FhevmType.euint128,
-      bobHitMask,
+      bobMoveMask,
       gameAddress,
       signers.alice,
     );
 
     // Alice targeted cells: 0, 5, 10, 15, 20, 1, 3, 4, 6, 8, 9
-    // Bitmask should have bits set for: 0, 1, 3, 4, 5, 6, 8, 9, 10, 15, 20
+    // Move mask should have bits set for: 0, 1, 3, 4, 5, 6, 8, 9, 10, 15, 20
     // 2^0 + 2^1 + 2^3 + 2^4 + 2^5 + 2^6 + 2^8 + 2^9 + 2^10 + 2^15 + 2^20
     // = 1 + 2 + 8 + 16 + 32 + 64 + 256 + 512 + 1024 + 32768 + 1048576
     // = 1082401 + 2 + 8 + 16 + 64 + 256 + 512 + 1024 = 1084983
-    const expectedHitMask = (1n << 0n) + (1n << 1n) + (1n << 3n) + (1n << 4n) + (1n << 5n) + 
+    const expectedMoveMask = (1n << 0n) + (1n << 1n) + (1n << 3n) + (1n << 4n) + (1n << 5n) + 
                             (1n << 6n) + (1n << 8n) + (1n << 9n) + (1n << 10n) + (1n << 15n) + (1n << 20n);
-    expect(bobHitMaskDecrypted).to.eq(expectedHitMask);
+    expect(bobMoveMaskDecrypted).to.eq(expectedMoveMask);
 
-    // Verify that all of Bob's ships are in the hit mask
+    // Check hits mask (only actual hits, not misses)
+    const bobHitsMask = await game.getHitsMask(signers.bob.address);
+    const bobHitsMaskDecrypted = await fhevm.userDecryptEuint(
+      FhevmType.euint128,
+      bobHitsMask,
+      gameAddress,
+      signers.alice,
+    );
+
+    // Alice hit cells: 0, 5, 10, 15, 20 (only the ships)
+    // Hits mask should have bits set for: 0, 5, 10, 15, 20
+    // 2^0 + 2^5 + 2^10 + 2^15 + 2^20 = 1 + 32 + 1024 + 32768 + 1048576 = 1082401
+    const expectedHitsMask = (1n << 0n) + (1n << 5n) + (1n << 10n) + (1n << 15n) + (1n << 20n);
+    expect(bobHitsMaskDecrypted).to.eq(expectedHitsMask);
+
+    // Verify that all of Bob's ships are in the hits mask
     // Bob's ships: 0, 5, 10, 15, 20
-    // All these bits should be set in the hit mask
+    // All these bits should be set in the hits mask
     const bobShips = BOB_SHIP_MASK;
-    const intersection = bobHitMaskDecrypted & bobShips;
+    const intersection = bobHitsMaskDecrypted & bobShips;
     expect(intersection).to.eq(bobShips); // All ships should be hit
 
     // Finish the game as Alice (the winner)
